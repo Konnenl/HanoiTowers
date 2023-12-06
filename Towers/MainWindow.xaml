@@ -60,7 +60,7 @@
             <ComboBoxItem Content="7"></ComboBoxItem>
             <ComboBoxItem Content="8"></ComboBoxItem>
         </ComboBox>
-        <Canvas x:Name="canvas" Margin="40,0,40,0" Height="284" Grid.ColumnSpan="2" AllowDrop="True" Drop="ringDrop" DragOver="ringDragOver" Background="Transparent"/>
+        <Canvas x:Name="canvas" Margin="40,99,40,100" Grid.ColumnSpan="2" AllowDrop="True" Drop="ringDrop" DragOver="ringDragOver" Background="Transparent"/>
         <Label x:Name="labelRings" Content="" HorizontalAlignment="Left" Margin="215,429,0,0" VerticalAlignment="Top" Foreground="White" FontSize="16"/>
     </Grid>
 </Window>

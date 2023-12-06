@@ -6,6 +6,12 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
+
+// TODO 
+//      счёт шагов
+//      изменение скорости
+//      убрать счет шагов на месте
 
 namespace Towers
 {
@@ -16,6 +22,8 @@ namespace Towers
     {
         GameState gameState = new GameState();
         int from = -1;
+        Rectangle cur = null;
+        DispatcherTimer timer = new DispatcherTimer();
         public MainWindow()
         {
             InitializeComponent();
@@ -103,69 +111,102 @@ namespace Towers
             }
         }
 
-        private void Temp_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            Rectangle cur = (Rectangle)sender;
-            Ring_From(cur);
-
-            labelRings.Content = from.ToString();
-
-
-            if (e.LeftButton == MouseButtonState.Pressed && from != -1)
-            {
-                DragDrop.DoDragDrop((Rectangle)sender, (Rectangle)sender, DragDropEffects.Move);
-            }
-        }
-
         private void ManualMode()
         {
 
         }
-
-        private void ringDrop(object sender, DragEventArgs e)
-        {
-            Point dropPosition = e.GetPosition(canvas);
-            //Rectangle cur = new Rectangle();
-            // canvas 720:284 (240)
-            Rectangle cur = (Rectangle)sender;
-            /*if (from == 0)
-            {
-                cur = gameState.first.Pop();
-            }
-            else if (from == 1)
-            {
-                cur = gameState.second.Pop();
-            }
-            else if (from == 2)
-            {
-                cur = gameState.third.Pop();
-            }*/
-            if (dropPosition.X >= 0 && dropPosition.X <= 240)
-            {
-                Canvas.SetBottom(cur, gameState.first.Count() * 25);
-                Canvas.SetLeft(cur, 117 - cur.Width/2);
-                gameState.first.Push(cur);
-            }
-            else if(dropPosition.X >240 && dropPosition.X <= 480)
-            {
-                Canvas.SetBottom(cur, gameState.second.Count() * 25);
-                //110 - (170 / 2 - gameState.deltaWidth / 2 * i)
-                Canvas.SetLeft(cur, 360 - cur.Width/2);
-                gameState.second.Push(cur);
-            }
-            else if(dropPosition.X >480 && dropPosition.X <= 720)
-            {
-                Canvas.SetBottom(cur, gameState.third.Count() * 25);
-                Canvas.SetLeft(cur, 610 - cur.Width/2);
-                gameState.third.Push(cur);
-            }
-        }
-
         private void AutoMode()
         {
 
         }
 
+
+        // ПЕРЕДВИЖЕНИЕ В РУЧНОЙ РЕЖИМЕ
+        private void Temp_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            cur = (Rectangle)sender;
+            Ring_From(cur);
+           
+            if (e.LeftButton == MouseButtonState.Pressed && from != -1 && Correct_Top())
+            {
+                DragDrop.DoDragDrop((Rectangle)sender, (Rectangle)sender, DragDropEffects.Move);
+            }
+        }
+
+        private void ringDrop(object sender, DragEventArgs e)
+        {
+            Point dropPosition = e.GetPosition(canvas);
+            // canvas 720:284 (240)
+
+            //TODO анимация возвращение если нельзя перенести
+            if (dropPosition.X >= 0 && dropPosition.X <= 240 && Correct_Drop(0))
+            {
+                if (from == 0) Canvas.SetBottom(cur, (gameState.first.Count() - 1) * 25);
+                else Canvas.SetBottom(cur, gameState.first.Count() * 25);
+                Canvas.SetLeft(cur, 110 - cur.Width/2);
+                Delete();
+                gameState.first.Push(cur);
+                gameState.step++;
+            }
+            else if(dropPosition.X >240 && dropPosition.X <= 480 && Correct_Drop(1))
+            {
+                if (from == 1) Canvas.SetBottom(cur, (gameState.second.Count() - 1) * 25);
+                else Canvas.SetBottom(cur, gameState.second.Count() * 25);
+                Canvas.SetLeft(cur, 360 - cur.Width/2);
+                Delete();
+                gameState.second.Push(cur);
+                gameState.step++;
+            }
+            else if(dropPosition.X >480 && dropPosition.X <= 720 && Correct_Drop(2))
+            {
+                if (from == 2) Canvas.SetBottom(cur, (gameState.third.Count() - 1) * 25);
+                else Canvas.SetBottom(cur, gameState.third.Count() * 25);
+                Canvas.SetLeft(cur, 610 - cur.Width/2);
+                Delete();
+                gameState.third.Push(cur);
+                gameState.step++;
+            }
+            else
+            {
+                if (from == 0)
+                {
+                    Canvas.SetBottom(cur, (gameState.first.Count() - 1) * 25);
+                    Canvas.SetLeft(cur, 110 - cur.Width / 2);
+                }
+                else if (from == 1)
+                {
+                    Canvas.SetBottom(cur, (gameState.second.Count() - 1) * 25);
+                    Canvas.SetLeft(cur, 360 - cur.Width / 2);
+                }
+                else if (from == 2)
+                {
+                    Canvas.SetBottom(cur, (gameState.third.Count() - 1) * 25);
+                    Canvas.SetLeft(cur, 610 - cur.Width / 2);
+                }
+            }
+            labelRings.Content = gameState.step.ToString();
+            from = -1;
+            if (Done())
+            {
+                messageBox m = new messageBox();
+                m.Owner = this;
+                m.mbLabel.Content = "Игра пройдена!";
+                m.Show();
+                // сделать сброс или что-то другое
+            }
+        }
+        private void ringDragOver(object sender, DragEventArgs e)
+        {
+            Point dropPosition = e.GetPosition(canvas);
+
+            Canvas.SetLeft(cur, dropPosition.X - cur.Width/2);
+            Canvas.SetBottom(cur, (285 - dropPosition.Y) - cur.Height/2); 
+
+        }
+
+
+
+        // ДОП ФУНКЦИИ
         private void Ring_From(Rectangle e)
         {
             if (gameState.first.Any() && e == gameState.first.Peek())
@@ -182,10 +223,42 @@ namespace Towers
             }
         }
 
-        private void ringDragOver(object sender, DragEventArgs e)
+        private void Delete()
         {
-            Point dropPosition = e.GetPosition(canvas);
-            //Canvas.SetLeft()
+            Rectangle udaliPotom = null;
+            if (from == 0) udaliPotom = gameState.first.Pop();
+            else if (from == 1) udaliPotom = gameState.second.Pop();
+            else if (from == 2) gameState.third.Pop();
+        }
+
+        private bool Correct_Drop(int n)
+        {
+            if (n == 0 && gameState.first.Any())
+            {
+                return (cur.Width <= gameState.first.Peek().Width);
+            }
+            else if (n == 1 && gameState.second.Any())
+            {
+                return (cur.Width <= gameState.second.Peek().Width);
+            }
+            else if (n == 2 && gameState.third.Any())
+            {
+                return (cur.Width <= gameState.third.Peek().Width);
+            }
+            return true;
+        }
+
+        private bool Correct_Top()
+        {
+            if (from == 0) return cur == gameState.first.Peek();
+            else if (from == 1) return cur == gameState.second.Peek();
+            else if (from == 2) return cur == gameState.third.Peek();
+            return false;
+        }
+
+        private bool Done()
+        {
+            return gameState.first.Count == 0 && (gameState.second.Count == 0 && gameState.second.Any() || gameState.second.Any() && gameState.third.Count == 0);
         }
     }
 }
