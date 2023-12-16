@@ -48,10 +48,10 @@
         <Rectangle x:Name="r1" Margin="0,0,159,77" Fill="#FFA18B74" RadiusX="5" RadiusY="5" Height="23" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="180"/>
         <Rectangle x:Name="r3" Margin="161,384,60,0" Fill="#FFA18B74" RadiusX="5" RadiusY="5" Grid.Column="1" Height="22" VerticalAlignment="Top"/>
         <Rectangle x:Name="r2" Margin="310,384,310,0" Fill="#FFA18B74" RadiusX="5" RadiusY="5" Width="180" Grid.ColumnSpan="2" Height="22" VerticalAlignment="Top"/>
-        <Rectangle Margin="143,134,242,0" Width="14" Fill="#FFA18B74" Height="257" VerticalAlignment="Top"/>
-        <Rectangle Margin="393,134,393,0" Width="14" Fill="#FFA18B74" Grid.ColumnSpan="2" Height="257" VerticalAlignment="Top"/>
-        <Rectangle Margin="244,134,143,0" Width="14" Fill="#FFA18B74" Grid.Column="1" Height="257" VerticalAlignment="Top"/>
-        <ComboBox x:Name="Rings" Margin="215,17,0,0" HorizontalAlignment="Left" Width="45" Height="28" VerticalAlignment="Top" SelectionChanged="Rings_SelectionChanged">
+        <Rectangle Margin="143,144,242,0" Width="14" Fill="#FFA18B74" Height="247" VerticalAlignment="Top"/>
+        <Rectangle Margin="393,144,393,0" Width="14" Fill="#FFA18B74" Grid.ColumnSpan="2" Height="247" VerticalAlignment="Top"/>
+        <Rectangle Margin="244,144,143,0" Width="14" Fill="#FFA18B74" Grid.Column="1" Height="247" VerticalAlignment="Top"/>
+        <ComboBox x:Name="rings" Margin="215,17,0,0" HorizontalAlignment="Left" Width="45" Height="28" VerticalAlignment="Top" SelectionChanged="Rings_SelectionChanged">
             <ComboBoxItem Content="2"></ComboBoxItem>
             <ComboBoxItem Content="3"></ComboBoxItem>
             <ComboBoxItem Content="4"></ComboBoxItem>
@@ -60,7 +60,18 @@
             <ComboBoxItem Content="7"></ComboBoxItem>
             <ComboBoxItem Content="8"></ComboBoxItem>
         </ComboBox>
-        <Canvas x:Name="canvas" Margin="40,99,40,100" Grid.ColumnSpan="2" AllowDrop="True" Drop="ringDrop" DragOver="ringDragOver" Background="Transparent"/>
-        <Label x:Name="labelRings" Content="" HorizontalAlignment="Left" Margin="215,429,0,0" VerticalAlignment="Top" Foreground="White" FontSize="16"/>
+        <Canvas x:Name="canvas" Margin="40,99,40,100" Grid.ColumnSpan="2" AllowDrop="True" Drop="ringDrop" DragOver="ringDragOver" Background="Transparent">
+        </Canvas>
+        <Label x:Name="labelStep" Content="" HorizontalAlignment="Left" Margin="215,429,0,0" VerticalAlignment="Top" Foreground="White" FontSize="16"/>
+        <Slider x:Name="Speed" Grid.Column="1" Value ="10" HorizontalAlignment="Left" Margin="231,65,0,0" VerticalAlignment="Top" Width="151" Maximum="20" Minimum="0" ValueChanged="Speed_ValueChanged" RenderTransformOrigin="0.5,0.5">
+            <Slider.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform/>
+                    <SkewTransform/>
+                    <RotateTransform Angle="180"/>
+                    <TranslateTransform/>
+                </TransformGroup>
+            </Slider.RenderTransform>
+        </Slider>
     </Grid>
 </Window>

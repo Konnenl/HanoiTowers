@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,10 +8,6 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
-// TODO 
-//      счёт шагов
-//      изменение скорости
-//      убрать счет шагов на месте
 
 namespace Towers
 {
@@ -21,13 +17,32 @@ namespace Towers
     public partial class MainWindow : Window
     {
         GameState gameState = new GameState();
+
         int from = -1;
+        int to = -1;
+
+
+        bool goUp = true;
+        bool goDown = false;
+        bool goLeft = false;
+        bool goRight = false;
+        int directionsCount;
+
+
+        Queue <Point> directions = new Queue<Point>();
+        Point curDir = new Point();
+
+
         Rectangle cur = null;
         DispatcherTimer timer = new DispatcherTimer();
+
+
+
+
         public MainWindow()
         {
             InitializeComponent();
-            labelRings.Content = gameState.ringCount.ToString();
+            labelStep.Content = gameState.ringCount.ToString();
         }
 
         private void Button_Click_Manual(object sender, RoutedEventArgs e)
@@ -52,12 +67,40 @@ namespace Towers
 
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
+            canvas.Children.Clear();
+            rings.SelectedItem = null;
 
+            Manual.Background = new SolidColorBrush(Color.FromRgb(29, 30, 37));
+            Auto.Background = new SolidColorBrush(Color.FromRgb(29, 30, 37));
+
+            gameState.gameMode = GameState.mode.Inactive;
+            gameState.ringCount = 0;
+            gameState.listColumn[0].Clear();
+            gameState.listColumn[1].Clear();
+            gameState.listColumn[2].Clear();
+
+            goUp = true;
+            goDown = false;
+            goLeft = false;
+            goRight = false;
+
+            gameState.step = 0;
+            from = -1;
+            to = -1;
+            directions.Clear();
+            cur = null;
+            timer.Stop();
+            Speed.Value = 10;
+            gameState.speed = 10;
+
+            labelStep.Content = gameState.step.ToString();
         }
 
         private void Rings_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            gameState.ringCount = Int32.Parse(((ComboBoxItem)(((System.Windows.Controls.ComboBox)sender).SelectedItem)).Content.ToString());
+            if (((ComboBox)sender).SelectedItem != null){
+                gameState.ringCount = Int32.Parse(((ComboBoxItem)(((ComboBox)sender).SelectedItem)).Content.ToString());
+            }
         }
         private void Start_Click(object sender, RoutedEventArgs e)
         {
@@ -76,7 +119,8 @@ namespace Towers
                     }
                     temp.SetValue(RenderOptions.EdgeModeProperty, EdgeMode.Aliased);
 
-                    gameState.first.Push(temp);
+
+                    gameState.listColumn[0].Push(temp);
                     canvas.Children.Add(temp);
                     Canvas.SetBottom(temp, i * 25);
                     Canvas.SetLeft(temp, 110 - (170/2 - gameState.deltaWidth/2 * i));
@@ -101,27 +145,130 @@ namespace Towers
                 m.Show();
             }
              
-            if (gameState.gameMode == GameState.mode.Manual)
+
+            if (gameState.gameMode == GameState.mode.Auto)
             {
-                ManualMode();
+                AutoMode(gameState.ringCount, 0, 2, 1);
+
+                curDir = directions.Dequeue();
+                directionsCount = directions.Count + 1;
+                from = (int)curDir.X;
+                to = (int)curDir.Y;
+                cur = gameState.listColumn[from].Pop();
+
+                gameState.step++;
+                labelStep.Content = gameState.step;
+
+                timer.Tick += TimerEvent;
+                timer.Interval = TimeSpan.FromMilliseconds(gameState.speed);
+                timer.Start();
+            }
+        }
+        private void Speed_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (true)
+            {
+                gameState.speed = Math.Round(Speed.Value + 0.49, 2);
+            }
+        }
+
+
+
+
+        // АВТОМАТИЧЕСКИЙ
+        private void AutoMode(int n, int fromAuto, int toAuto, int unused)
+        {
+            if (n <= 0)
+            {
+                return;
+            }
+            AutoMode(n - 1, fromAuto, unused, toAuto);
+            directions.Enqueue(new Point(fromAuto, toAuto));
+            AutoMode(n - 1, unused, toAuto, fromAuto);
+            return;
+        }
+
+        private void TimerEvent(object sender, EventArgs e)
+        {
+            if (directionsCount != 0)
+            {
+                if (goUp)
+                {
+                    Canvas.SetBottom(cur, Canvas.GetBottom(cur) + 5);
+                    if (Canvas.GetBottom(cur) == 250)
+                    {
+                        switch (from)
+                        {
+                            case 0:
+                                goRight = true;
+                                break;
+                            case 1:
+                                if (to == 0) goLeft = true;
+                                else if (to == 2) goRight = true;
+                                break;
+                            case 2:
+                                goLeft = true;
+                                break;
+                        }
+                        goUp = false;
+                    }
+                    
+                }
+                else if (goDown)
+                {
+                    Canvas.SetBottom(cur, Canvas.GetBottom(cur) - 5);
+                    if (Canvas.GetBottom(cur) == gameState.listColumn[to].Count * 25)
+                    {
+                        goDown = false;
+                        directionsCount--;
+                        gameState.listColumn[to].Push(cur);
+                        if (directions.Count > 0)
+                        {
+                            curDir = directions.Dequeue();
+                            from = (int)curDir.X;
+                            to = (int)curDir.Y;
+                            cur = gameState.listColumn[from].Pop();
+                            goUp = true;
+                            labelStep.Content = ++gameState.step;
+                        }
+                    }
+
+                }
+                else if (goLeft)
+                {
+                    Canvas.SetLeft(cur, Canvas.GetLeft(cur) - 5);
+                    if (Canvas.GetLeft(cur) == 110 + (250 * to) - cur.Width / 2)
+                    {
+                        goLeft = false;
+                        goDown = true;
+                    }
+                }
+                else if (goRight)
+                {
+                    Canvas.SetLeft(cur, Canvas.GetLeft(cur) + 5);
+                    if (Canvas.GetLeft(cur) == 110 + (250 * to) - cur.Width / 2)
+                    {
+                        goRight = false;
+                        goDown = true;
+                    }
+                }
             }
             else
             {
-                AutoMode();
+                timer.Stop();
+                messageBox m = new messageBox();
+                m.Owner = this;
+                m.mbLabel.Content = "Игра пройдена!\nКоличество шагов: " + gameState.step;
+                m.Show();
             }
         }
 
-        private void ManualMode()
-        {
-
-        }
-        private void AutoMode()
-        {
-
-        }
 
 
-        // ПЕРЕДВИЖЕНИЕ В РУЧНОЙ РЕЖИМЕ
+
+
+
+        // РУЧНОЙ
         private void Temp_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
             cur = (Rectangle)sender;
@@ -136,63 +283,38 @@ namespace Towers
         private void ringDrop(object sender, DragEventArgs e)
         {
             Point dropPosition = e.GetPosition(canvas);
+            Ring_To(dropPosition);
             // canvas 720:284 (240)
-
-            //TODO анимация возвращение если нельзя перенести
-            if (dropPosition.X >= 0 && dropPosition.X <= 240 && Correct_Drop(0))
+            if (Correct_Drop(to))
             {
-                if (from == 0) Canvas.SetBottom(cur, (gameState.first.Count() - 1) * 25);
-                else Canvas.SetBottom(cur, gameState.first.Count() * 25);
-                Canvas.SetLeft(cur, 110 - cur.Width/2);
-                Delete();
-                gameState.first.Push(cur);
-                gameState.step++;
-            }
-            else if(dropPosition.X >240 && dropPosition.X <= 480 && Correct_Drop(1))
-            {
-                if (from == 1) Canvas.SetBottom(cur, (gameState.second.Count() - 1) * 25);
-                else Canvas.SetBottom(cur, gameState.second.Count() * 25);
-                Canvas.SetLeft(cur, 360 - cur.Width/2);
-                Delete();
-                gameState.second.Push(cur);
-                gameState.step++;
-            }
-            else if(dropPosition.X >480 && dropPosition.X <= 720 && Correct_Drop(2))
-            {
-                if (from == 2) Canvas.SetBottom(cur, (gameState.third.Count() - 1) * 25);
-                else Canvas.SetBottom(cur, gameState.third.Count() * 25);
-                Canvas.SetLeft(cur, 610 - cur.Width/2);
-                Delete();
-                gameState.third.Push(cur);
-                gameState.step++;
+                if (from == to)
+                {
+                    Canvas.SetBottom(cur, (gameState.listColumn[to].Count() - 1) * 25);
+                    //шаг не считаем
+                }
+                else
+                {
+                    Canvas.SetBottom(cur, gameState.listColumn[to].Count() * 25);
+                    gameState.step++;
+                }
+                Canvas.SetLeft(cur, 110 + (250 * to) - cur.Width / 2);
+                gameState.listColumn[from].Pop();
+                gameState.listColumn[to].Push(cur);
             }
             else
             {
-                if (from == 0)
-                {
-                    Canvas.SetBottom(cur, (gameState.first.Count() - 1) * 25);
-                    Canvas.SetLeft(cur, 110 - cur.Width / 2);
-                }
-                else if (from == 1)
-                {
-                    Canvas.SetBottom(cur, (gameState.second.Count() - 1) * 25);
-                    Canvas.SetLeft(cur, 360 - cur.Width / 2);
-                }
-                else if (from == 2)
-                {
-                    Canvas.SetBottom(cur, (gameState.third.Count() - 1) * 25);
-                    Canvas.SetLeft(cur, 610 - cur.Width / 2);
-                }
+                Canvas.SetBottom(cur, (gameState.listColumn[from].Count() - 1) * 25);
+                Canvas.SetLeft(cur, 110 * (from + 1) - cur.Width / 2);
             }
-            labelRings.Content = gameState.step.ToString();
+
+            labelStep.Content = gameState.step.ToString();
             from = -1;
             if (Done())
             {
                 messageBox m = new messageBox();
                 m.Owner = this;
-                m.mbLabel.Content = "Игра пройдена!";
+                m.mbLabel.Content = "Игра пройдена!\nКоличество шагов: " + gameState.step;
                 m.Show();
-                // сделать сброс или что-то другое
             }
         }
         private void ringDragOver(object sender, DragEventArgs e)
@@ -206,59 +328,60 @@ namespace Towers
 
 
 
-        // ДОП ФУНКЦИИ
+
+
+
+        // ДОП
         private void Ring_From(Rectangle e)
         {
-            if (gameState.first.Any() && e == gameState.first.Peek())
+            for (int i = 0; i < 3; i++)
             {
-                from = 0;
-            }
-            else if (gameState.second.Any() && e == gameState.second.Peek())
-            {
-                from = 1;
-            }
-            else if (gameState.third.Any() && e == gameState.third.Peek())
-            {
-                from = 2;
+                if (gameState.listColumn[i].Any() && e == gameState.listColumn[i].Peek())
+                {
+                    from = i;
+                    break;
+                }
             }
         }
 
-        private void Delete()
+        private void Ring_To(Point position)
         {
-            Rectangle udaliPotom = null;
-            if (from == 0) udaliPotom = gameState.first.Pop();
-            else if (from == 1) udaliPotom = gameState.second.Pop();
-            else if (from == 2) gameState.third.Pop();
+            if (position.X >= 0 && position.X <= 240 && Correct_Drop(0))
+            {
+                to = 0;
+            }
+            else if (position.X > 240 && position.X <= 480 && Correct_Drop(1))
+            {
+                to = 1;
+            }
+            else if (position.X > 480 && position.X <= 720 && Correct_Drop(2))
+            {
+                to = 2;
+            }
         }
 
         private bool Correct_Drop(int n)
         {
-            if (n == 0 && gameState.first.Any())
+            if (gameState.listColumn[n].Any())
             {
-                return (cur.Width <= gameState.first.Peek().Width);
-            }
-            else if (n == 1 && gameState.second.Any())
-            {
-                return (cur.Width <= gameState.second.Peek().Width);
-            }
-            else if (n == 2 && gameState.third.Any())
-            {
-                return (cur.Width <= gameState.third.Peek().Width);
+                return (cur.Width <= gameState.listColumn[n].Peek().Width);
             }
             return true;
         }
 
         private bool Correct_Top()
         {
-            if (from == 0) return cur == gameState.first.Peek();
-            else if (from == 1) return cur == gameState.second.Peek();
-            else if (from == 2) return cur == gameState.third.Peek();
+            if (from >= 0)
+            {
+                return cur == gameState.listColumn[from].Peek();
+            }
             return false;
         }
 
         private bool Done()
         {
-            return gameState.first.Count == 0 && (gameState.second.Count == 0 && gameState.second.Any() || gameState.second.Any() && gameState.third.Count == 0);
+            return gameState.listColumn[0].Count == 0 && (gameState.listColumn[1].Count == 0 && gameState.listColumn[2].Any() || gameState.listColumn[1].Any() && gameState.listColumn[2].Count == 0);
         }
+
     }
 }
